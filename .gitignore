@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Virtual environments
+.venv/
+venv/
+env/
+laboratorio1/.lab1/
+
+# Secrets
+.env
+**/.env
+
+# Generated artifacts
+laboratorio1/output/*
+!laboratorio1/output/.gitkeep
+
+# PDF report generator (local only)
+laboratorio1/scripts/gerar_pdf_relatorio.py
