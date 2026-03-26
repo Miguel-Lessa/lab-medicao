@@ -13,9 +13,12 @@ laboratorio1/.lab1/
 .env
 **/.env
 
-# Generated artifacts
-laboratorio1/output/*
-!laboratorio1/output/.gitkeep
+# Generated artifacts (kept in repo for evaluation)
 
 # PDF report generator (local only)
 laboratorio1/scripts/gerar_pdf_relatorio.py
+
+# Laboratorio 2 — arquivos pesados/temporarios
+laboratorio2/repos/
+laboratorio2/tmp/
+laboratorio2/tools/
