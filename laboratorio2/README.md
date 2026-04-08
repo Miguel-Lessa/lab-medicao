@@ -1,19 +1,4 @@
-# Laboratorio 2 - Sprint 01 (Java + CK)
-
-## Objetivo da Sprint 01
-
-Entregar:
-
-1. Lista dos 1.000 repositorios Java mais populares.
-2. Script de automacao de clone + coleta de metricas CK.
-3. CSV com resultado das medicoes de 1 repositorio.
-
-## Estrutura
-
-- `scripts/coleta_sprint1_java.py`: coleta top-1000 Java no GitHub.
-- `scripts/coleta_ck_sprint1.py`: clona 1 repositorio e executa CK.
-- `output/top_1000_java_repos.csv`: lista de repositorios Java.
-- `output/ck_resultado_1_repo.csv`: sumarizacao de CBO/DIT/LCOM para 1 repositorio.
+# Laboratorio 2 — Qualidade de Sistemas Java (CK)
 
 ## Pre-requisitos
 
@@ -35,15 +20,35 @@ Copy-Item .env.example .env
 GITHUB_TOKEN=ghp_seu_token_aqui
 ```
 
-## Instalacao
-
-No diretorio `laboratorio2`:
+3. Instale dependencias:
 
 ```powershell
 pip install -r requirements.txt
 ```
 
-## Execucao da Sprint 01
+## Estrutura
+
+```
+laboratorio2/
+  scripts/
+    coleta_sprint1_java.py    # Sprint 01: coleta top-1000 Java
+    coleta_ck_sprint1.py      # Sprint 01: CK em 1 repositorio
+    enriquecer_repos.py       # Sprint 02: adiciona releases e tamanho via API
+    coleta_ck_todos.py        # Sprint 02: CK em todos os repos (paralelo)
+    analise_sprint2.py        # Sprint 02: analise estatistica + relatorio
+  output/
+    top_1000_java_repos.csv
+    top_1000_java_repos_enriquecido.csv
+    ck_resultado_1_repo.csv
+    ck_resultado_todos.csv
+    relatorio_final_sprint2.md
+    charts/*.png
+  tools/                       # ck.jar (baixado automaticamente)
+  repos/                       # clones temporarios (gitignored)
+  tmp/                         # saidas temporarias do CK (gitignored)
+```
+
+## Sprint 01
 
 1. Coletar top-1000 repositorios Java:
 
@@ -51,10 +56,32 @@ pip install -r requirements.txt
 python scripts/coleta_sprint1_java.py
 ```
 
-2. Executar CK em 1 repositorio da lista e gerar CSV final:
+2. Executar CK em 1 repositorio (validacao):
 
 ```powershell
 python scripts/coleta_ck_sprint1.py
 ```
 
-Observacao: o script do CK baixa automaticamente o JAR em `tools/ck.jar` caso ele nao exista.
+## Sprint 02
+
+1. Enriquecer CSV com releases e tamanho (via API, sem clone):
+
+```powershell
+python scripts/enriquecer_repos.py
+```
+
+2. Executar CK em todos os repositorios (4 workers paralelos):
+
+```powershell
+python scripts/coleta_ck_todos.py
+```
+
+Opcoes:
+- `--workers 8` para usar 8 workers
+- `--ck-jar caminho/ck.jar` para informar JAR customizado
+
+3. Gerar analise, graficos e relatorio:
+
+```powershell
+python scripts/analise_sprint2.py
+```
