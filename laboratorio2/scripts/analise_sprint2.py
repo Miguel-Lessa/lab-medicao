@@ -159,8 +159,13 @@ def gerar_boxplots_quartil(df: pd.DataFrame, col_processo: str, col_qualidade: s
     limpo = df[[col_processo, col_qualidade]].dropna().copy()
     if len(limpo) < 4:
         return
-    limpo["quartil"] = pd.qcut(limpo[col_processo], q=4, labels=["Q1", "Q2", "Q3", "Q4"],
-                                duplicates="drop")
+    try:
+        limpo["quartil"] = pd.qcut(limpo[col_processo], q=4, duplicates="drop")
+        limpo["quartil"] = limpo["quartil"].cat.rename_categories(
+            {c: f"Q{i+1}" for i, c in enumerate(limpo["quartil"].cat.categories)}
+        )
+    except ValueError:
+        return
     fig, ax = plt.subplots(figsize=(8, 5))
     limpo.boxplot(column=col_qualidade, by="quartil", ax=ax, grid=False)
     ax.set_xlabel(f"Quartil de {label_processo}")
