@@ -52,11 +52,9 @@ COLUNAS_SAIDA = [
     "lcom_media", "lcom_mediana", "lcom_desvio_padrao",
 ]
 
-# Repos maiores que este limite (KB) serao pulados
-TAMANHO_MAX_KB = 500_000
-
-TIMEOUT_CLONE = 120
-TIMEOUT_CK = 180
+TIMEOUT_CLONE = 600
+TIMEOUT_CK = 300
+MAX_TENTATIVAS_CLONE = 3
 
 # Lock para escrita thread-safe no CSV de saida
 _lock_csv = threading.Lock()
@@ -121,55 +119,83 @@ def limpar_diretorio(diretorio: Path) -> None:
 # Pipeline de um repositorio (executado dentro de cada worker)
 # ---------------------------------------------------------------------------
 
+def clonar_repositorio(url: str, dir_clone: Path, nome: str) -> bool:
+    """Tenta clonar com ate 3 estrategias diferentes. Retorna True se conseguiu."""
+    estrategias = [
+        ["git", "clone", "--depth", "1", "--single-branch", "--quiet", "--no-tags", url, str(dir_clone)],
+        ["git", "clone", "--depth", "1", "--quiet", url, str(dir_clone)],
+        ["git", "clone", "--depth", "1", url, str(dir_clone)],
+    ]
+
+    for tentativa, cmd in enumerate(estrategias, 1):
+        limpar_diretorio(dir_clone)
+        dir_clone.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            resultado = subprocess.run(
+                cmd, timeout=TIMEOUT_CLONE, capture_output=True, text=True,
+            )
+            if resultado.returncode == 0:
+                return True
+            logger.warning(
+                f"Clone tentativa {tentativa}/{MAX_TENTATIVAS_CLONE} falhou para {nome}: "
+                f"{resultado.stderr.strip()}"
+            )
+        except subprocess.TimeoutExpired:
+            logger.warning(f"Clone tentativa {tentativa}/{MAX_TENTATIVAS_CLONE} TIMEOUT para {nome}")
+            limpar_diretorio(dir_clone)
+
+        time.sleep(2)
+
+    return False
+
+
+def executar_ck_com_memoria(caminho_jar: Path, dir_clone: Path, dir_ck: Path, nome: str) -> bool:
+    """Executa o CK com memoria extra. Retorna True se conseguiu."""
+    limpar_diretorio(dir_ck)
+    dir_ck.mkdir(parents=True, exist_ok=True)
+    caminho_saida_ck = str(dir_ck) + os.sep
+
+    try:
+        resultado = subprocess.run(
+            [
+                "java", "-Xmx1g", "-jar", str(caminho_jar),
+                str(dir_clone), "false", "0", "false", caminho_saida_ck,
+            ],
+            timeout=TIMEOUT_CK, capture_output=True, text=True,
+        )
+        if resultado.returncode == 0:
+            return True
+        logger.warning(f"CK falhou para {nome}: {resultado.stderr.strip()[:200]}")
+    except subprocess.TimeoutExpired:
+        logger.warning(f"CK TIMEOUT para {nome}")
+
+    return False
+
+
 def processar_repositorio(
     repo: dict, caminho_jar: Path, worker_id: int
 ) -> dict | None:
     """Clona, executa CK, sumariza e limpa. Retorna dict ou None em caso de falha."""
     nome = repo["nome_completo"]
-    dir_worker = DIR_TMP / f"worker_{worker_id}"
-    dir_clone = dir_worker / "repo"
-    dir_ck = dir_worker / "ck_out"
+    nome_seguro = nome.replace("/", "__")
+    dir_trabalho = DIR_TMP / nome_seguro
+    dir_clone = dir_trabalho / "repo"
+    dir_ck = dir_trabalho / "ck_out"
+    tamanho_kb = int(repo.get("tamanho_kb", 0))
 
     try:
-        # Filtro de tamanho
-        tamanho_kb = int(repo.get("tamanho_kb", 0))
-        if tamanho_kb > TAMANHO_MAX_KB:
-            logger.warning(f"SKIP (tamanho {tamanho_kb} KB > {TAMANHO_MAX_KB} KB): {nome}")
+        # 1. Clone com retries e estrategias diferentes
+        if not clonar_repositorio(repo["url"], dir_clone, nome):
+            logger.warning(f"SKIP (clone falhou apos {MAX_TENTATIVAS_CLONE} tentativas): {nome}")
             return None
 
-        # 1. Clone minimalista com timeout
-        limpar_diretorio(dir_clone)
-        dir_clone.parent.mkdir(parents=True, exist_ok=True)
-        subprocess.run(
-            [
-                "git", "clone",
-                "--depth", "1",
-                "--single-branch",
-                "--quiet",
-                "--no-tags",
-                repo["url"],
-                str(dir_clone),
-            ],
-            check=True,
-            timeout=TIMEOUT_CLONE,
-            capture_output=True,
-        )
+        # 2. Executar CK com memoria extra
+        if not executar_ck_com_memoria(caminho_jar, dir_clone, dir_ck, nome):
+            logger.warning(f"SKIP (CK falhou): {nome}")
+            limpar_diretorio(dir_trabalho)
+            return None
 
-        # 2. Executar CK com timeout
-        limpar_diretorio(dir_ck)
-        dir_ck.mkdir(parents=True, exist_ok=True)
-        caminho_saida_ck = str(dir_ck) + os.sep
-        subprocess.run(
-            [
-                "java", "-jar", str(caminho_jar),
-                str(dir_clone), "false", "0", "false", caminho_saida_ck,
-            ],
-            check=True,
-            timeout=TIMEOUT_CK,
-            capture_output=True,
-        )
-
-        # 3. Apagar clone imediatamente para liberar disco
+        # 3. Apagar clone para liberar disco
         limpar_diretorio(dir_clone)
 
         # 4. Sumarizar class.csv
@@ -180,7 +206,7 @@ def processar_repositorio(
 
         df = pd.read_csv(class_csv)
         if df.empty or not all(c in df.columns for c in METRICAS_QUALIDADE):
-            logger.warning(f"SKIP (colunas CK ausentes): {nome}")
+            logger.warning(f"SKIP (colunas CK ausentes — repo sem .java real): {nome}")
             return None
 
         resumo: dict = {
@@ -192,7 +218,6 @@ def processar_repositorio(
             "tamanho_kb": tamanho_kb,
         }
 
-        # LOC vem do CK (coluna 'loc' no class.csv)
         if "loc" in df.columns:
             resumo["loc_total"] = int(df["loc"].sum())
             resumo["loc_media"] = round(float(df["loc"].mean()), 4)
@@ -208,19 +233,13 @@ def processar_repositorio(
             resumo[f"{metrica}_mediana"] = round(float(serie.median()), 4)
             resumo[f"{metrica}_desvio_padrao"] = round(float(serie.std(ddof=0)), 4)
 
-        # Limpar saida do CK
-        limpar_diretorio(dir_ck)
+        limpar_diretorio(dir_trabalho)
         return resumo
 
-    except subprocess.TimeoutExpired:
-        logger.warning(f"TIMEOUT: {nome}")
-    except subprocess.CalledProcessError as exc:
-        logger.warning(f"ERRO processo: {nome} — {exc}")
     except Exception as exc:
         logger.warning(f"ERRO inesperado: {nome} — {exc}")
     finally:
-        limpar_diretorio(dir_clone)
-        limpar_diretorio(dir_ck)
+        limpar_diretorio(dir_trabalho)
 
     return None
 
