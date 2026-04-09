@@ -1,0 +1,509 @@
+\documentclass[12pt,a4paper]{article}
+
+% ─── Pacotes ───
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[brazil]{babel}
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{hyperref}
+\usepackage{amsmath}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{setspace}
+\usepackage{indentfirst}
+\usepackage{url}
+\usepackage{xcolor}
+
+\geometry{left=3cm, right=2cm, top=3cm, bottom=2cm}
+\onehalfspacing
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue!70!black,
+    citecolor=blue!70!black,
+    urlcolor=blue!70!black
+}
+
+\newcolumntype{R}[1]{>{\raggedleft\arraybackslash}p{#1}}
+\newcolumntype{C}[1]{>{\centering\arraybackslash}p{#1}}
+
+% ─── Capa ───
+\begin{document}
+
+\begin{titlepage}
+\centering
+\vspace*{2cm}
+
+{\Large\bfseries Pontifícia Universidade Católica de Minas Gerais\\[4pt]
+Instituto de Ciências Exatas e Informática}
+
+\vspace{3cm}
+
+{\LARGE\bfseries Relatório Final — Laboratório 2}
+
+\vspace{1cm}
+
+{\Large Um Estudo das Características de Qualidade\\de Sistemas Java}
+
+\vspace{3cm}
+
+{\large
+Isaac Portela\\
+M.\ Xavier
+}
+
+\vfill
+
+{\large
+Laboratório de Experimentação de Software\\
+Março/2026
+}
+
+\end{titlepage}
+
+% ─── Sumário ───
+\tableofcontents
+\newpage
+
+% ═══════════════════════════════════════════════════
+\section{Introdução}
+% ═══════════════════════════════════════════════════
+
+\subsection{Contextualização}
+
+No processo de desenvolvimento de sistemas \textit{open-source}, em que diversos desenvolvedores contribuem em partes diferentes do código, um dos riscos a serem gerenciados diz respeito à evolução dos seus atributos de qualidade interna. Isto é, ao se adotar uma abordagem colaborativa, corre-se o risco de tornar vulnerável aspectos como modularidade, manutenibilidade ou legibilidade do software produzido. Para tanto, diversas abordagens modernas buscam aperfeiçoar tal processo, através da adoção de práticas relacionadas à revisão de código ou à análise estática através de ferramentas de CI/CD.
+
+Neste contexto, o objetivo deste laboratório é analisar aspectos da qualidade de repositórios desenvolvidos na linguagem Java, correlacionando-os com características do seu processo de desenvolvimento, sob a perspectiva de métricas de produto calculadas através da ferramenta CK.
+
+\subsection{Problema foco do experimento}
+
+Verificar se características observáveis do processo de desenvolvimento — popularidade, maturidade, atividade e tamanho — estão associadas à qualidade interna do código-fonte de repositórios Java populares, medida por CBO, DIT e LCOM.
+
+\subsection{Questões de Pesquisa}
+
+\begin{description}[style=nextline, leftmargin=1.5cm]
+    \item[\textbf{RQ01}] Qual a relação entre a \textbf{popularidade} dos repositórios e as suas características de qualidade?
+    \item[\textbf{RQ02}] Qual a relação entre a \textbf{maturidade} dos repositórios e as suas características de qualidade?
+    \item[\textbf{RQ03}] Qual a relação entre a \textbf{atividade} dos repositórios e as suas características de qualidade?
+    \item[\textbf{RQ04}] Qual a relação entre o \textbf{tamanho} dos repositórios e as suas características de qualidade?
+\end{description}
+
+\subsection{Hipóteses informais}
+
+Antes da análise dos dados, foram formuladas as seguintes hipóteses:
+
+\begin{description}[style=nextline, leftmargin=0.5cm]
+    \item[\textbf{H1 (Popularidade):}] Espera-se que repositórios mais populares (mais estrelas) apresentem melhor qualidade interna, uma vez que código legível e bem estruturado tende a atrair mais colaboradores e, consequentemente, mais estrelas.
+
+    \item[\textbf{H2 (Maturidade):}] Espera-se que repositórios mais maduros (mais antigos) apresentem maior complexidade estrutural, pois ao longo dos anos o código acumula funcionalidades e dependências entre classes, podendo elevar CBO e DIT.
+
+    \item[\textbf{H3 (Atividade):}] Espera-se que repositórios com maior atividade (mais releases) apresentem maior acoplamento e menor coesão, pois a adição frequente de funcionalidades pode introduzir dependências entre classes sem o devido cuidado com refatoração.
+
+    \item[\textbf{H4 (Tamanho):}] Espera-se que repositórios maiores (mais LOC) apresentem maior acoplamento (CBO) e menor coesão (LCOM), pois sistemas maiores são naturalmente mais difíceis de manter modularizados.
+\end{description}
+
+\subsection{Objetivos}
+
+\textbf{Objetivo principal:} Analisar a relação entre métricas de processo de desenvolvimento e métricas de qualidade interna em repositórios Java populares do GitHub.
+
+\textbf{Objetivos específicos:}
+
+\begin{enumerate}
+    \item Coletar os 1.000 repositórios Java mais populares do GitHub.
+    \item Executar a ferramenta CK para extrair métricas de qualidade (CBO, DIT, LCOM) e sumarizar os resultados por repositório (média, mediana e desvio padrão).
+    \item Calcular correlações estatísticas (Spearman) entre métricas de processo e qualidade.
+    \item Gerar visualizações (scatter plots, boxplots e heatmap) para apoiar a interpretação dos resultados.
+    \item Confrontar os resultados obtidos com as hipóteses formuladas.
+\end{enumerate}
+
+\newpage
+
+% ═══════════════════════════════════════════════════
+\section{Metodologia}
+% ═══════════════════════════════════════════════════
+
+\subsection{Passo a passo do experimento}
+
+\begin{enumerate}
+    \item \textbf{Coleta dos repositórios:} Utilizando a API REST do GitHub, foram coletados os 1.000 repositórios Java mais populares, ordenados por número de estrelas.
+    \item \textbf{Enriquecimento de metadados:} Para cada repositório, foram coletados via API o tamanho em KB e o total de releases.
+    \item \textbf{Clone e execução do CK:} Cada repositório foi clonado (\textit{shallow clone}, \texttt{-{}-depth~1}) e submetido à ferramenta CK (versão 0.7.0), que gera o arquivo \texttt{class.csv} com métricas por classe Java.
+    \item \textbf{Sumarização por repositório:} As métricas CBO, DIT, LCOM e LOC foram agregadas por repositório, calculando-se média, mediana e desvio padrão.
+    \item \textbf{Análise estatística:} Foram calculadas correlações de Spearman ($\rho$ e \textit{p}-valor) entre cada métrica de processo e cada métrica de qualidade.
+    \item \textbf{Geração de gráficos:} Foram produzidos scatter plots com linha de tendência, boxplots por quartil e heatmap geral de correlação.
+\end{enumerate}
+
+\subsection{Decisões de projeto}
+
+\begin{itemize}
+    \item \textbf{Clone raso (\texttt{-{}-depth 1}):} Reduz tempo de download e uso de disco.
+    \item \textbf{Processamento paralelo (4 workers):} Viabiliza a coleta em escala, com isolamento entre workers.
+    \item \textbf{Spearman em vez de Pearson:} Spearman é mais robusto para distribuições assimétricas e outliers, comuns neste tipo de dado.
+    \item \textbf{Mediana como medida de tendência central:} Reduz a influência de classes extremas (outliers) na representação do repositório.
+\end{itemize}
+
+\subsection{Materiais utilizados}
+
+\begin{itemize}
+    \item \textbf{Linguagem de programação:} Python 3.12+
+    \item \textbf{Ferramenta de análise estática:} CK 0.7.0 (Java)
+    \item \textbf{Bibliotecas:} Pandas, SciPy, Matplotlib, Seaborn, Requests
+    \item \textbf{Fonte de dados:} API REST do GitHub
+    \item \textbf{Controle de versão:} Git
+\end{itemize}
+
+\subsection{Métodos utilizados}
+
+\begin{itemize}
+    \item Coleta automatizada via scripts Python.
+    \item Análise estática com CK (\texttt{class.csv} por classe).
+    \item Agregação estatística por repositório.
+    \item Correlação de Spearman ($\rho$ e \textit{p}-valor).
+    \item Visualização: scatter plot, boxplot por quartis, heatmap.
+\end{itemize}
+
+\subsection{Métricas e suas unidades}
+
+A Tabela~\ref{tab:metricas} apresenta as métricas utilizadas no experimento.
+
+\begin{table}[H]
+\centering
+\caption{Métricas utilizadas no experimento.}
+\label{tab:metricas}
+\small
+\begin{tabular}{llp{5.5cm}ll}
+\toprule
+\textbf{Categoria} & \textbf{Métrica} & \textbf{Definição} & \textbf{Unidade} & \textbf{Origem} \\
+\midrule
+Processo & Estrelas       & Número de estrelas no GitHub                                  & contagem & GitHub API \\
+Processo & Idade          & Diferença entre a data atual e a data de criação              & anos     & GitHub API \\
+Processo & Releases       & Número de versões publicadas                                  & contagem & GitHub API \\
+Processo & LOC total      & Soma de linhas de código de todas as classes                  & linhas   & CK \\
+\midrule
+Qualidade & CBO           & Número de classes das quais uma classe depende (\textit{Coupling Between Objects}) & índice & CK \\
+Qualidade & DIT           & Profundidade máxima da árvore de herança (\textit{Depth of Inheritance Tree})       & índice & CK \\
+Qualidade & LCOM          & Grau de falta de coesão entre métodos (\textit{Lack of Cohesion of Methods})        & índice & CK \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Interpretação prática das métricas de qualidade:}
+
+\begin{itemize}
+    \item \textbf{CBO:} Valores altos indicam alto acoplamento — classes muito dependentes de outras. Dificulta manutenção: alterar uma classe pode causar efeito cascata em várias outras. \textit{Ideal: valores baixos.}
+    \item \textbf{DIT:} Valores altos indicam hierarquias de herança profundas — o comportamento da classe fica distribuído em muitas camadas. Dificulta compreensão e depuração. \textit{Ideal: valores moderados.}
+    \item \textbf{LCOM:} Valores altos indicam classes com métodos pouco relacionados entre si — sinal de \textit{design} pobre, onde a classe acumula responsabilidades que deveriam estar separadas. \textit{Ideal: valores baixos (próximos de 0).}
+\end{itemize}
+
+\newpage
+
+% ═══════════════════════════════════════════════════
+\section{Visualização dos Resultados}
+% ═══════════════════════════════════════════════════
+
+\subsection{Dados produzidos}
+
+Os seguintes arquivos foram gerados durante o experimento:
+
+\begin{itemize}
+    \item \texttt{top\_1000\_java\_repos.csv} — Lista dos 1.000 repositórios coletados.
+    \item \texttt{top\_1000\_java\_repos\_enriquecido.csv} — Lista enriquecida com tamanho (KB) e total de releases.
+    \item \texttt{ck\_resultado\_todos.csv} — Métricas CK sumarizadas para 897 repositórios processados.
+    \item \texttt{descritivas\_globais.csv} — Estatísticas descritivas das métricas.
+    \item \texttt{correlacoes\_spearman.csv} — Correlações de Spearman com $\rho$, \textit{p}-valor e interpretação.
+\end{itemize}
+
+\textbf{Amostra final válida para análise estatística: 896 repositórios.}
+
+\subsection{Estatísticas descritivas}
+
+A Tabela~\ref{tab:descritivas} apresenta as estatísticas descritivas das métricas coletadas.
+
+\begin{table}[H]
+\centering
+\caption{Estatísticas descritivas das métricas ($n = 896$).}
+\label{tab:descritivas}
+\small
+\begin{tabular}{lR{1.8cm}R{1.5cm}R{2cm}R{1.5cm}R{2cm}}
+\toprule
+\textbf{Métrica} & \textbf{Média} & \textbf{Mediana} & \textbf{Desvio padrão} & \textbf{Mín} & \textbf{Máx} \\
+\midrule
+Estrelas            & 9.099,63   & 5.665,0    & 10.477,82   & 3.474     & 124.039   \\
+Idade (anos)        & 10,02      & 10,21      & 3,11        & 0,51      & 17,20     \\
+Total de releases   & 37,77      & 10,0       & 102,89      & 0         & 2.232     \\
+LOC total           & 64.316,37  & 12.911,5   & 164.528,09  & 2         & 1.826.041 \\
+\midrule
+CBO (mediana)       & 3,41       & 3,0        & 1,48        & 0,0       & 11,0      \\
+DIT (mediana)       & 1,10       & 1,0        & 0,32        & 1,0       & 3,0       \\
+LCOM (mediana)      & 1,48       & 0,0        & 16,73       & 0,0       & 453,5     \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Observações sobre a distribuição:}
+
+\begin{itemize}
+    \item \textbf{Estrelas:} Distribuição fortemente assimétrica à direita (média muito acima da mediana), indicando poucos repositórios com muitas estrelas e a maioria com valores mais modestos.
+    \item \textbf{LOC total:} Grande variabilidade (desvio padrão de 164 mil), com repositórios variando de 2 a 1,8 milhão de linhas.
+    \item \textbf{Total de releases:} Mediana de 10, mas média de 37,77. Muitos repositórios possuem 0 releases; poucos possuem milhares.
+    \item \textbf{DIT:} Extremamente concentrado em 1,0 (mediana $= 1$, máximo $= 3$). A maioria dos repositórios Java populares usa herança rasa.
+    \item \textbf{LCOM:} Mediana igual a 0, mas média de 1,48 e máximo de 453,5. A maioria dos repositórios tem boa coesão, mas poucos são extremamente ruins.
+\end{itemize}
+
+\subsection{Correlações de Spearman por questão de pesquisa}
+
+A Tabela~\ref{tab:correlacoes} apresenta os resultados das correlações de Spearman para cada par de métricas.
+
+\begin{table}[H]
+\centering
+\caption{Correlações de Spearman entre métricas de processo e qualidade ($n = 896$).}
+\label{tab:correlacoes}
+\small
+\begin{tabular}{llllR{1cm}R{1.3cm}cc}
+\toprule
+\textbf{RQ} & \textbf{Processo} & \textbf{Qualidade} & $\boldsymbol{\rho}$ & \textit{\textbf{p}}\textbf{-valor} & \textbf{Sig.?} & \textbf{Interpretação} \\
+\midrule
+RQ01 & Estrelas  & CBO  &  0,0218 & 0,5148  & Não & Desprezível (+) \\
+RQ01 & Estrelas  & DIT  & $-$0,0423 & 0,2063  & Não & Desprezível ($-$) \\
+RQ01 & Estrelas  & LCOM &  0,0241 & 0,4708  & Não & Desprezível (+) \\
+\midrule
+RQ02 & Idade     & CBO  &  0,0009 & 0,9795  & Não & Desprezível (+) \\
+RQ02 & Idade     & DIT  &  0,1054 & 0,0016  & Sim & Fraca (+) \\
+RQ02 & Idade     & LCOM &  0,0797 & 0,0170  & Sim & Desprezível (+) \\
+\midrule
+RQ03 & Releases  & CBO  &  0,2611 & $\approx 0$ & Sim & Fraca (+) \\
+RQ03 & Releases  & DIT  & $-$0,0437 & 0,1916  & Não & Desprezível ($-$) \\
+RQ03 & Releases  & LCOM &  0,1248 & 0,0002  & Sim & Fraca (+) \\
+\midrule
+RQ04 & LOC total & CBO  &  0,2314 & $\approx 0$ & Sim & Fraca (+) \\
+RQ04 & LOC total & DIT  & $-$0,0268 & 0,4223  & Não & Desprezível ($-$) \\
+RQ04 & LOC total & LCOM &  0,1362 & 0,00004 & Sim & Fraca (+) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Escala de interpretação do $|\rho|$ de Spearman utilizada:}
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{ll}
+\toprule
+\textbf{Faixa de} $|\rho|$ & \textbf{Interpretação} \\
+\midrule
+$< 0{,}10$      & Desprezível \\
+$0{,}10$ a $0{,}29$ & Fraca \\
+$0{,}30$ a $0{,}49$ & Moderada \\
+$0{,}50$ a $0{,}69$ & Forte \\
+$\geq 0{,}70$   & Muito forte \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Gráficos e interpretação}
+
+\subsubsection{Heatmap geral de correlação}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{heatmap_correlacao.png}
+    \caption{Heatmap de correlação de Spearman: métricas de processo $\times$ qualidade.}
+    \label{fig:heatmap}
+\end{figure}
+
+O heatmap apresenta uma visão consolidada de todas as 12 correlações. Os dois maiores valores são \texttt{releases $\times$ CBO} ($\rho = 0{,}26$) e \texttt{LOC $\times$ CBO} ($\rho = 0{,}23$), ambos na faixa fraca. A coluna de Estrelas (RQ01) permanece próxima de zero para todas as métricas de qualidade. A linha de DIT é pálida em toda a extensão, confirmando baixa variação dessa métrica.
+
+\subsubsection{Painel de Scatter Plots (RQ01--RQ04 $\times$ CBO/DIT/LCOM)}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{painel_scatter.png}
+    \caption{Scatter plots: métricas de processo $\times$ qualidade (RQ01--RQ04). Cada subplot contém a nuvem de pontos, a linha de tendência (tracejada) e a anotação com $\rho$ e \textit{p}-valor.}
+    \label{fig:scatter}
+\end{figure}
+
+\textbf{Leitura por linha (RQ):}
+
+\begin{itemize}
+    \item \textbf{Linha 1 (RQ01 — Estrelas):} Linhas de tendência praticamente horizontais nas três métricas. Nenhum \textit{p}-valor é significativo. Popularidade não explica qualidade.
+    \item \textbf{Linha 2 (RQ02 — Idade):} CBO e LCOM com tendência plana. DIT apresenta leve inclinação positiva ($\rho = 0{,}105$, $p = 0{,}0016$), sugerindo que repositórios mais antigos acumulam herança levemente mais profunda.
+    \item \textbf{Linha 3 (RQ03 — Releases):} A inclinação mais visível de todo o painel está em Releases $\times$ CBO ($\rho = 0{,}261$). LCOM também mostra leve tendência positiva. DIT permanece plano.
+    \item \textbf{Linha 4 (RQ04 — LOC):} LOC $\times$ CBO mostra inclinação clara ($\rho = 0{,}231$). LOC $\times$ LCOM tem sinal fraco mas significativo. DIT sem efeito.
+\end{itemize}
+
+\textbf{Leitura por coluna (métrica de qualidade):}
+
+\begin{itemize}
+    \item \textbf{Coluna CBO:} É a métrica mais sensível — apresenta inclinação visível em RQ03 e RQ04.
+    \item \textbf{Coluna DIT:} Quase todos os pontos concentrados em DIT $= 1$. Baixa variabilidade na amostra.
+    \item \textbf{Coluna LCOM:} Dominada por outliers extremos; a maioria dos repositórios tem LCOM próximo de 0.
+\end{itemize}
+
+\subsubsection{Painel de Boxplots por Quartil (RQ01--RQ04 $\times$ CBO/DIT/LCOM)}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{painel_boxplots.png}
+    \caption{Boxplots de qualidade por quartil de processo (RQ01--RQ04). Q1 = menores valores, Q4 = maiores.}
+    \label{fig:boxplots}
+\end{figure}
+
+\textbf{Leitura por linha (RQ):}
+
+\begin{itemize}
+    \item \textbf{Linha 1 (RQ01 — Estrelas):} Medianas de CBO praticamente iguais entre Q1 e Q4. DIT colapsado em 1. LCOM com mediana 0 em todos os quartis. Confirmação visual de que popularidade é irrelevante.
+    \item \textbf{Linha 2 (RQ02 — Idade):} CBO com medianas similares entre quartis. DIT e LCOM sem diferença visual clara. Efeito desprezível da maturidade.
+    \item \textbf{Linha 3 (RQ03 — Releases):} Progressão visível de CBO: mediana sobe de Q1 ($\approx 3$) para Q3 ($\approx 4$). Apenas 3 quartis porque muitos repositórios têm 0 releases. DIT e LCOM sem diferença relevante.
+    \item \textbf{Linha 4 (RQ04 — LOC):} CBO com mediana crescente de Q1 para Q4, e caixa de Q4 mais ampla. DIT constante. LCOM com mais outliers em Q4.
+\end{itemize}
+
+\newpage
+
+% ═══════════════════════════════════════════════════
+\section{Discussão dos Resultados}
+% ═══════════════════════════════════════════════════
+
+\subsection{Confronto com as questões de pesquisa e hipóteses}
+
+\subsubsection{RQ01 — Popularidade $\times$ Qualidade}
+
+\begin{itemize}
+    \item \textbf{Hipótese original (H1):} Repositórios mais populares teriam melhor qualidade interna.
+    \item \textbf{Evidência obtida:} Nenhuma correlação significativa (todos os \textit{p}-valores $> 0{,}05$; todos os $|\rho| < 0{,}05$).
+    \item \textbf{Confronto:} A hipótese H1 \textbf{não foi confirmada}. Ter muitas estrelas não indica código melhor (nem pior). Estrelas no GitHub refletem interesse da comunidade, mas não necessariamente qualidade técnica. É possível que repositórios populares incluam tutoriais, documentação ou ferramentas cujo código não é prioritariamente otimizado.
+\end{itemize}
+
+\subsubsection{RQ02 — Maturidade $\times$ Qualidade}
+
+\begin{itemize}
+    \item \textbf{Hipótese original (H2):} Repositórios mais antigos teriam maior complexidade estrutural.
+    \item \textbf{Evidência obtida:} Correlação fraca e significativa apenas para DIT ($\rho = 0{,}1054$, $p = 0{,}0016$). CBO sem efeito.
+    \item \textbf{Confronto:} A hipótese H2 foi \textbf{parcialmente confirmada}, mas com efeito muito pequeno. Repositórios mais antigos acumulam hierarquias de herança levemente mais profundas, porém não apresentam acoplamento significativamente diferente.
+\end{itemize}
+
+\subsubsection{RQ03 — Atividade $\times$ Qualidade}
+
+\begin{itemize}
+    \item \textbf{Hipótese original (H3):} Repositórios mais ativos teriam maior acoplamento e menor coesão.
+    \item \textbf{Evidência obtida:} Maior correlação do estudo: releases $\times$ CBO com $\rho = 0{,}2611$ ($p \approx 0$). Também significativo para LCOM ($\rho = 0{,}1248$).
+    \item \textbf{Confronto:} A hipótese H3 foi \textbf{confirmada} para CBO e parcialmente para LCOM. Projetos com muitos releases tendem a ter classes mais acopladas. Isso pode refletir o custo estrutural de entregas frequentes: funcionalidades novas são adicionadas sem refatoração proporcional.
+\end{itemize}
+
+\subsubsection{RQ04 — Tamanho $\times$ Qualidade}
+
+\begin{itemize}
+    \item \textbf{Hipótese original (H4):} Repositórios maiores teriam maior acoplamento e menor coesão.
+    \item \textbf{Evidência obtida:} LOC $\times$ CBO com $\rho = 0{,}2314$ ($p \approx 0$) e LOC $\times$ LCOM com $\rho = 0{,}1362$ ($p < 0{,}001$).
+    \item \textbf{Confronto:} A hipótese H4 foi \textbf{confirmada} para CBO e parcialmente para LCOM. Mais código se traduz em mais dependências entre classes. Sistemas maiores são mais difíceis de manter modulares.
+\end{itemize}
+
+\subsection{Insights principais}
+
+\begin{enumerate}
+    \item \textbf{CBO é a métrica de qualidade mais sensível:} Foi a única que respondeu de forma significativa a atividade e tamanho. Isso faz sentido, pois acoplamento é diretamente impactado pelo crescimento do número de classes e suas interações.
+
+    \item \textbf{DIT é praticamente constante na amostra:} Mediana $= 1$, máximo $= 3$. Repositórios Java populares utilizam herança rasa. Isso pode indicar adoção de composição em vez de herança (prática incentivada por \textit{design patterns} modernos).
+
+    \item \textbf{LCOM tem distribuição extremamente assimétrica:} Mediana $= 0$ (boa coesão), mas com outliers de até 453,5. A maioria dos repositórios tem classes coesas; poucos são extremamente ruins.
+
+    \item \textbf{Popularidade não é preditor de qualidade:} Estrelas no GitHub medem interesse, não qualidade técnica. Este resultado desafia a noção informal de que ``repositório popular = código bom''.
+\end{enumerate}
+
+\subsection{Comparações}
+
+\begin{itemize}
+    \item \textbf{Maior correlação encontrada:} releases $\times$ CBO ($\rho = 0{,}2611$). \textbf{Menor:} idade $\times$ CBO ($\rho = 0{,}0009$).
+    \item \textbf{Métrica mais sensível:} CBO. \textbf{Menos sensível:} DIT.
+    \item \textbf{Processo mais impactante:} Atividade (releases), seguido de tamanho (LOC). Os menos impactantes foram popularidade (estrelas) e maturidade (idade).
+    \item \textbf{Convergência visual/estatística:} Os gráficos confirmam o que Spearman indica — quando há sinal (RQ03, RQ04 com CBO), a tendência visual é perceptível; quando não há (RQ01), os gráficos são planos.
+\end{itemize}
+
+\subsection{Interpretação estatística}
+
+\begin{itemize}
+    \item \textbf{Significância vs.\ magnitude:} Resultados significativos ($p < 0{,}05$) não implicam efeitos fortes. Neste estudo, mesmo os resultados significativos apresentaram magnitudes fracas ($|\rho| < 0{,}30$). Isso ocorre porque a amostra é grande ($n = 896$), o que torna mais fácil detectar associações pequenas.
+    \item \textbf{Outliers:} LCOM possui outliers extremos que inflam a média. O uso de mediana como medida central atenua esse problema.
+    \item \textbf{Correlação $\neq$ causalidade:} A associação entre releases e CBO não significa que publicar mais versões \textit{causa} maior acoplamento; pode haver variáveis confundidoras não analisadas.
+\end{itemize}
+
+\newpage
+
+% ═══════════════════════════════════════════════════
+\section{Conclusão}
+% ═══════════════════════════════════════════════════
+
+\subsection{Tomada de decisão}
+
+Com base nos resultados, conclui-se que, no universo dos 1.000 repositórios Java mais populares do GitHub, \textbf{atividade (releases) e tamanho (LOC) são os fatores com maior associação à degradação de qualidade interna}, especialmente no que diz respeito a acoplamento (CBO). Por outro lado, \textbf{popularidade (estrelas) não deve ser usada como indicador de qualidade técnica}, pois não apresentou correlação com nenhuma métrica de qualidade.
+
+\subsection{Sugestões futuras}
+
+\begin{itemize}
+    \item Aplicar métodos multivariados (regressão múltipla) para controlar efeitos simultâneos.
+    \item Incluir métricas de processo adicionais (número de contribuidores, issues abertas, cobertura de testes).
+    \item Repetir o experimento com outras linguagens (Python, JavaScript, C++) para verificar generalização.
+    \item Analisar a evolução temporal das métricas ao longo das releases.
+    \item Investigar o papel de práticas de CI/CD na contenção da degradação de qualidade.
+\end{itemize}
+
+\subsection{Resultado conclusivo sucinto}
+
+Neste estudo, repositórios Java com maior atividade (releases) e maior tamanho (LOC) apresentaram acoplamento entre classes (CBO) significativamente mais alto, embora com efeito fraco. Popularidade por estrelas não demonstrou relação com qualidade interna. Esses resultados indicam que qualidade de código é um fenômeno multifatorial e não pode ser explicada por uma única variável de processo.
+
+\subsection{Bônus — Confronto com literatura}
+
+A Tabela~\ref{tab:literatura} confronta os achados deste estudo com trabalhos anteriores.
+
+\begin{table}[H]
+\centering
+\caption{Confronto com a literatura.}
+\label{tab:literatura}
+\small
+\begin{tabular}{p{3.5cm}p{3.5cm}p{3.5cm}C{2cm}}
+\toprule
+\textbf{Trabalho} & \textbf{Achado principal} & \textbf{Nosso resultado} & \textbf{Corrobora?} \\
+\midrule
+Aniche et al.\ (2016) — CK tool & Métricas CK são úteis para identificar classes problemáticas em sistemas Java. & Confirmado: CBO e LCOM discriminaram diferenças entre repositórios. & Sim \\
+\midrule
+Yamashita e Moonen (2013) & Acoplamento (CBO) é o principal fator associado a defeitos em software. & CBO foi a métrica mais sensível a mudanças de processo neste estudo. & Sim \\
+\midrule
+Munaiah et al.\ (2017) & Estrelas no GitHub não são bom indicador de qualidade de engenharia. & Estrelas não se correlacionaram com CBO, DIT nem LCOM. & Sim \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\newpage
+
+% ═══════════════════════════════════════════════════
+\section{Ameaças à Validade}
+% ═══════════════════════════════════════════════════
+
+\begin{itemize}
+    \item \textbf{Validade de construção:} CBO, DIT e LCOM capturam aspectos parciais da qualidade; métricas como cobertura de testes e complexidade ciclomática não foram incluídas.
+    \item \textbf{Validade interna:} 103 repositórios falharam no processamento (timeout ou erro do CK), o que pode introduzir viés se esses repositórios tivessem características diferentes.
+    \item \textbf{Validade externa:} Resultados foram obtidos exclusivamente para Java no GitHub. Podem não generalizar para outras linguagens, plataformas ou contextos de desenvolvimento.
+\end{itemize}
+
+\newpage
+
+% ═══════════════════════════════════════════════════
+\section{Referências}
+% ═══════════════════════════════════════════════════
+
+\begin{enumerate}[label={[\arabic*]}]
+    \item Enunciado do Laboratório 2 — Laboratório de Experimentação de Software.
+    \item ANICHE, M. \textit{Java code metrics calculator (CK)}. 2015. Disponível em: \url{https://github.com/mauricioaniche/ck}. Acesso em: mar.\ 2026.
+    \item CHIDAMBER, S.~R.; KEMERER, C.~F. A Metrics Suite for Object Oriented Design. \textit{IEEE Transactions on Software Engineering}, v.~20, n.~6, p.~476--493, 1994.
+    \item YAMASHITA, A.; MOONEN, L. Do developers care about code smells? An exploratory survey. In: \textit{IEEE WCRE}, 2013.
+    \item MUNAIAH, N. et al. Curating GitHub for engineered software projects. \textit{Empirical Software Engineering}, v.~22, n.~6, p.~3219--3253, 2017.
+    \item Documentação da API REST do GitHub. Disponível em: \url{https://docs.github.com/en/rest}. Acesso em: mar.\ 2026.
+\end{enumerate}
+
+\end{document}
