@@ -51,10 +51,15 @@ RQS = {
         "metrica_processo": "total_releases",
         "nome_processo": "Total de Releases",
     },
-    "RQ04": {
-        "titulo": "Tamanho x Qualidade",
+    "RQ04a": {
+        "titulo": "Tamanho (LOC) x Qualidade",
         "metrica_processo": "loc_total",
         "nome_processo": "LOC Total",
+    },
+    "RQ04b": {
+        "titulo": "Tamanho (Comentarios) x Qualidade",
+        "metrica_processo": "comentarios_total",
+        "nome_processo": "Linhas de Comentarios",
     },
 }
 
@@ -177,6 +182,94 @@ def gerar_boxplots_quartil(df: pd.DataFrame, col_processo: str, col_qualidade: s
     plt.close(fig)
 
 
+RQS_PAINEL = {
+    "RQ01": RQS["RQ01"],
+    "RQ02": RQS["RQ02"],
+    "RQ03": RQS["RQ03"],
+    "RQ04": RQS["RQ04a"],
+}
+
+
+def gerar_painel_scatter(df: pd.DataFrame, caminho: Path) -> None:
+    """Grid 4x3 com todos os scatter plots (linhas=RQ, colunas=metrica)."""
+    fig, axes = plt.subplots(4, 3, figsize=(14, 16))
+
+    for i, (rq_id, rq_info) in enumerate(RQS_PAINEL.items()):
+        col_proc = rq_info["metrica_processo"]
+        nome_proc = rq_info["nome_processo"]
+        if col_proc not in df.columns:
+            continue
+
+        for j, mq in enumerate(METRICAS_QUALIDADE):
+            ax = axes[i][j]
+            nome_mq = NOMES_QUALIDADE[mq]
+            limpo = df[[col_proc, mq]].dropna()
+
+            ax.scatter(limpo[col_proc], limpo[mq], alpha=0.25, s=8, edgecolors="none")
+
+            if len(limpo) > 2:
+                z = np.polyfit(limpo[col_proc], limpo[mq], 1)
+                p = np.poly1d(z)
+                x_sorted = np.sort(limpo[col_proc])
+                ax.plot(x_sorted, p(x_sorted), "r--", alpha=0.7, linewidth=1)
+
+                rho, pv = stats.spearmanr(limpo[col_proc], limpo[mq])
+                ax.text(
+                    0.02, 0.95, f"rho={rho:.3f}\np={pv:.4f}",
+                    transform=ax.transAxes, fontsize=7, va="top",
+                    bbox=dict(boxstyle="round,pad=0.3", fc="white", alpha=0.8),
+                )
+
+            ax.set_title(f"{rq_id}: {nome_proc} x {nome_mq}", fontsize=9)
+            ax.set_xlabel(nome_proc, fontsize=8)
+            ax.set_ylabel(nome_mq, fontsize=8)
+            ax.tick_params(labelsize=7)
+
+    fig.tight_layout()
+    fig.savefig(caminho, dpi=200)
+    plt.close(fig)
+
+
+def gerar_painel_boxplots(df: pd.DataFrame, caminho: Path) -> None:
+    """Grid 4x3 com todos os boxplots por quartil (linhas=RQ, colunas=metrica)."""
+    fig, axes = plt.subplots(4, 3, figsize=(14, 16))
+
+    for i, (rq_id, rq_info) in enumerate(RQS_PAINEL.items()):
+        col_proc = rq_info["metrica_processo"]
+        nome_proc = rq_info["nome_processo"]
+        if col_proc not in df.columns:
+            continue
+
+        for j, mq in enumerate(METRICAS_QUALIDADE):
+            ax = axes[i][j]
+            nome_mq = NOMES_QUALIDADE[mq]
+            limpo = df[[col_proc, mq]].dropna().copy()
+
+            if len(limpo) < 4:
+                ax.set_visible(False)
+                continue
+
+            try:
+                limpo["quartil"] = pd.qcut(limpo[col_proc], q=4, duplicates="drop")
+                limpo["quartil"] = limpo["quartil"].cat.rename_categories(
+                    {c: f"Q{k+1}" for k, c in enumerate(limpo["quartil"].cat.categories)}
+                )
+            except ValueError:
+                ax.set_visible(False)
+                continue
+
+            limpo.boxplot(column=mq, by="quartil", ax=ax, grid=False)
+            ax.set_title(f"{rq_id}: {nome_mq} por quartil de {nome_proc}", fontsize=9)
+            ax.set_xlabel(f"Quartil de {nome_proc}", fontsize=8)
+            ax.set_ylabel(nome_mq, fontsize=8)
+            ax.tick_params(labelsize=7)
+            fig.suptitle("")
+
+    fig.tight_layout()
+    fig.savefig(caminho, dpi=200)
+    plt.close(fig)
+
+
 # ---------------------------------------------------------------------------
 # Pipeline principal
 # ---------------------------------------------------------------------------
@@ -194,6 +287,7 @@ def main() -> None:
     # 1. Estatisticas descritivas globais
     colunas_interesse = [
         "estrelas", "idade_anos", "total_releases", "loc_total",
+        "comentarios_total",
         "cbo_mediana", "dit_mediana", "lcom_mediana",
         "cbo_media", "dit_media", "lcom_media",
     ]
@@ -260,6 +354,13 @@ def main() -> None:
 
     gerar_heatmap(df, colunas_proc, METRICAS_QUALIDADE, labels_proc, labels_qual,
                   DIR_GRAFICOS / "heatmap_correlacao.png")
+
+    # 4. Paineis consolidados (1 imagem cada)
+    gerar_painel_scatter(df, DIR_GRAFICOS / "painel_scatter.png")
+    print("Painel de scatter plots salvo em: charts/painel_scatter.png")
+
+    gerar_painel_boxplots(df, DIR_GRAFICOS / "painel_boxplots.png")
+    print("Painel de boxplots salvo em: charts/painel_boxplots.png")
 
     print(f"\nGraficos salvos em: {DIR_GRAFICOS}")
     print("Concluido. Use os CSVs e graficos para elaborar o relatorio.")

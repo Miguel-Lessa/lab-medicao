@@ -8,6 +8,6 @@ RQ02,idade_anos,Idade (anos),lcom_mediana,LCOM,0.0797,0.016958,896,desprezivel p
 RQ03,total_releases,Total de Releases,cbo_mediana,CBO,0.2611,0.0,896,fraca positiva,sim
 RQ03,total_releases,Total de Releases,dit_mediana,DIT,-0.0437,0.191554,896,desprezivel negativa,nao
 RQ03,total_releases,Total de Releases,lcom_mediana,LCOM,0.1248,0.000181,896,fraca positiva,sim
-RQ04,loc_total,LOC Total,cbo_mediana,CBO,0.2314,0.0,896,fraca positiva,sim
-RQ04,loc_total,LOC Total,dit_mediana,DIT,-0.0268,0.422339,896,desprezivel negativa,nao
-RQ04,loc_total,LOC Total,lcom_mediana,LCOM,0.1362,4.3e-05,896,fraca positiva,sim
+RQ04a,loc_total,LOC Total,cbo_mediana,CBO,0.2314,0.0,896,fraca positiva,sim
+RQ04a,loc_total,LOC Total,dit_mediana,DIT,-0.0268,0.422339,896,desprezivel negativa,nao
+RQ04a,loc_total,LOC Total,lcom_mediana,LCOM,0.1362,4.3e-05,896,fraca positiva,sim
