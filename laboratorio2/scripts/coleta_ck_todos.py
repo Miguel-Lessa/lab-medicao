@@ -47,6 +47,7 @@ COLUNAS_SAIDA = [
     "nome_completo", "url", "estrelas", "idade_anos",
     "total_releases", "tamanho_kb",
     "loc_total", "loc_media", "loc_mediana",
+    "comentarios_total", "comentarios_media", "comentarios_mediana",
     "cbo_media", "cbo_mediana", "cbo_desvio_padrao",
     "dit_media", "dit_mediana", "dit_desvio_padrao",
     "lcom_media", "lcom_mediana", "lcom_desvio_padrao",
@@ -102,6 +103,43 @@ def garantir_jar_ck(caminho_jar: Path) -> Path:
                 if pedaco:
                     fp.write(pedaco)
     return caminho_jar
+
+
+def contar_linhas_comentarios(diretorio: Path) -> dict:
+    """Percorre todos os .java e conta linhas de comentario (// e /* */)."""
+    total = 0
+    por_arquivo: list[int] = []
+
+    for arq in diretorio.rglob("*.java"):
+        contagem = 0
+        em_bloco = False
+        try:
+            with arq.open("r", encoding="utf-8", errors="ignore") as f:
+                for linha in f:
+                    stripped = linha.strip()
+                    if em_bloco:
+                        contagem += 1
+                        if "*/" in stripped:
+                            em_bloco = False
+                    elif stripped.startswith("//"):
+                        contagem += 1
+                    elif stripped.startswith("/*"):
+                        contagem += 1
+                        if "*/" not in stripped:
+                            em_bloco = True
+        except Exception:
+            pass
+        por_arquivo.append(contagem)
+        total += contagem
+
+    if por_arquivo:
+        serie = pd.Series(por_arquivo)
+        return {
+            "comentarios_total": int(total),
+            "comentarios_media": round(float(serie.mean()), 4),
+            "comentarios_mediana": round(float(serie.median()), 4),
+        }
+    return {"comentarios_total": 0, "comentarios_media": 0.0, "comentarios_mediana": 0.0}
 
 
 def _forcar_remocao(func, caminho, _exc_info):
@@ -195,10 +233,13 @@ def processar_repositorio(
             limpar_diretorio(dir_trabalho)
             return None
 
-        # 3. Apagar clone para liberar disco
+        # 3. Contar linhas de comentarios antes de apagar o clone
+        info_comentarios = contar_linhas_comentarios(dir_clone)
+
+        # 4. Apagar clone para liberar disco
         limpar_diretorio(dir_clone)
 
-        # 4. Sumarizar class.csv
+        # 5. Sumarizar class.csv
         class_csv = dir_ck / "class.csv"
         if not class_csv.exists() or class_csv.stat().st_size < 10:
             logger.warning(f"SKIP (class.csv vazio/inexistente): {nome}")
@@ -226,6 +267,8 @@ def processar_repositorio(
             resumo["loc_total"] = 0
             resumo["loc_media"] = 0.0
             resumo["loc_mediana"] = 0.0
+
+        resumo.update(info_comentarios)
 
         for metrica in METRICAS_QUALIDADE:
             serie = df[metrica]

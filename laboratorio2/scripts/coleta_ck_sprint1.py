@@ -84,6 +84,43 @@ def carregar_primeiro_repo(caminho_csv: Path) -> dict:
     return primeiro
 
 
+def contar_linhas_comentarios(diretorio: Path) -> dict:
+    """Percorre todos os .java e conta linhas de comentario (// e /* */)."""
+    total = 0
+    por_arquivo: list[int] = []
+
+    for arq in diretorio.rglob("*.java"):
+        contagem = 0
+        em_bloco = False
+        try:
+            with arq.open("r", encoding="utf-8", errors="ignore") as f:
+                for linha in f:
+                    stripped = linha.strip()
+                    if em_bloco:
+                        contagem += 1
+                        if "*/" in stripped:
+                            em_bloco = False
+                    elif stripped.startswith("//"):
+                        contagem += 1
+                    elif stripped.startswith("/*"):
+                        contagem += 1
+                        if "*/" not in stripped:
+                            em_bloco = True
+        except Exception:
+            pass
+        por_arquivo.append(contagem)
+        total += contagem
+
+    if por_arquivo:
+        serie = pd.Series(por_arquivo)
+        return {
+            "comentarios_total": int(total),
+            "comentarios_media": round(float(serie.mean()), 4),
+            "comentarios_mediana": round(float(serie.median()), 4),
+        }
+    return {"comentarios_total": 0, "comentarios_media": 0.0, "comentarios_mediana": 0.0}
+
+
 def _forcar_remocao(func, caminho, _exc_info):
     """Callback para shutil.rmtree: no Windows, arquivos .git sao read-only
     e precisam ter a permissao alterada antes de serem deletados."""
@@ -133,7 +170,9 @@ def executar_ck(caminho_jar: Path, dir_repo: Path, dir_saida_ck: Path) -> None:
     )
 
 
-def sumarizar_metricas_classe(caminho_csv_classe: Path, repo: dict) -> pd.DataFrame:
+def sumarizar_metricas_classe(
+    caminho_csv_classe: Path, repo: dict, info_comentarios: dict
+) -> pd.DataFrame:
     """Le o class.csv gerado pelo CK e calcula media, mediana e desvio padrao
     das metricas CBO, DIT e LCOM — agregando todas as classes do repositorio
     em uma unica linha de resumo."""
@@ -153,6 +192,11 @@ def sumarizar_metricas_classe(caminho_csv_classe: Path, repo: dict) -> pd.DataFr
         "url": repo["url"],
         "estrelas": int(repo["estrelas"]),
     }
+
+    if "loc" in df.columns:
+        resumo["loc_total"] = int(df["loc"].sum())
+
+    resumo.update(info_comentarios)
 
     for metrica in METRICAS_QUALIDADE:
         serie = df[metrica]
@@ -197,10 +241,15 @@ def main() -> None:
         shutil.rmtree(dir_saida_ck)
     executar_ck(caminho_jar, dir_repo, dir_saida_ck)
 
-    # 5. Sumarizar metricas e exportar CSV
+    # 5. Contar linhas de comentarios
+    print("Contando linhas de comentarios...")
+    info_comentarios = contar_linhas_comentarios(dir_repo)
+    print(f"  Total de comentarios: {info_comentarios['comentarios_total']}")
+
+    # 6. Sumarizar metricas e exportar CSV
     caminho_csv_classe = dir_saida_ck / "class.csv"
     print(f"Sumarizando metricas de: {caminho_csv_classe}")
-    df_resumo = sumarizar_metricas_classe(caminho_csv_classe, repo)
+    df_resumo = sumarizar_metricas_classe(caminho_csv_classe, repo, info_comentarios)
 
     DIR_SAIDA.mkdir(parents=True, exist_ok=True)
     df_resumo.to_csv(CSV_RESULTADO, index=False)
