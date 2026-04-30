@@ -1,0 +1,9 @@
+rq,dimensao,metrica,nome_metrica,n_merged,n_closed,mediana_merged,mediana_closed,mediana_merged_ic95,mediana_closed_ic95,U_mannwhitney,p_valor_mw,cliffs_delta,interpretacao_efeito,r_pointbiserial,p_valor_pb,significativo_005,p_holm,p_bonferroni,significativo_holm
+RQ01,tamanho,changed_files,Arquivos alterados,9728,4619,2.0,2.0,"[2.0, 2.0]","[1.0, 2.0]",24855092.5,0.0,0.1063,desprezivel,-0.0094,0.259324,sim,0.0,0.0,sim
+RQ01,tamanho,additions,Linhas adicionadas,9728,4619,22.0,23.0,"[21.0, 24.0]","[20.0, 25.0]",22529001.0,0.788006,0.0028,desprezivel,-0.0304,0.000275,nao,0.788006,1.0,nao
+RQ01,tamanho,deletions,Linhas removidas,9728,4619,4.0,2.0,"[4.0, 4.0]","[1.0, 2.0]",26311871.0,0.0,0.1711,pequeno,-0.02,0.016646,sim,0.0,0.0,sim
+RQ01,tamanho,loc_total,LOC total (add+del),9728,4619,34.0,31.0,"[32.0, 36.0]","[28.0, 33.0]",23143479.5,0.003482,0.0301,desprezivel,-0.0318,0.000142,sim,0.006964,0.027856,sim
+RQ02,tempo,tempo_analise_horas,Tempo de analise (h),9728,4619,40.7326,519.8089,"[37.6873, 43.1807]","[473.0769, 611.8542]",12656070.5,0.0,-0.4367,medio,-0.2966,0.0,sim,0.0,0.0,sim
+RQ03,descricao,descricao_tamanho_chars,Tamanho da descricao (chars),9728,4619,698.0,843.0,"[667.5, 730.5125]","[791.0, 886.0]",21499251.0,3e-05,-0.0431,desprezivel,-0.0031,0.70898,sim,9e-05,0.00024,sim
+RQ04,interacoes,num_participantes,Numero de participantes,9728,4619,3.0,3.0,"[2.0, 3.0]","[3.0, 3.0]",20608423.0,0.0,-0.0827,desprezivel,-0.0865,0.0,sim,0.0,0.0,sim
+RQ04,interacoes,total_comentarios,Total de comentarios,9728,4619,1.0,2.0,"[1.0, 1.0]","[2.0, 2.0]",18991448.5,0.0,-0.1547,pequeno,-0.0622,0.0,sim,0.0,0.0,sim
