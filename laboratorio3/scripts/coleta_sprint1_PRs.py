@@ -64,9 +64,41 @@ def coletar_repositorios(total: int = TOTAL_REPOS) -> list[dict]:
         dados = resposta.json()
         itens = dados.get("items", [])
         for item in itens:
+            linguagem = (item.get("language") or "").lower()
+            descricao = (item.get("description") or "").lower()
+            nome = (item.get("name") or "").lower()
+
+            linguagens_excluidas = {
+                "",  # sem linguagem
+                "markdown",
+                "jupyter notebook",
+            }
+
+            if linguagem in linguagens_excluidas:
+                continue
+
+            palavras_bloqueadas = {
+                "book", "books", "livro",
+                "course", "curso", "tutorial",
+                "awesome", "list", "roadmap",
+                "interview", "questions",
+                "guide", "guia",
+                "notes", "anotações",
+                "documentation", "docs"
+            }
+
+            texto = f"{nome} {descricao}"
+            if any(p in texto for p in palavras_bloqueadas):
+                continue
+
+            # 🚫 (Opcional) remover forks
+            if item.get("fork"):
+                continue
+
             criado_em = converter_iso_utc(item["created_at"])
             atualizado_em = converter_iso_utc(item["pushed_at"])
             idade_dias = (agora - criado_em).days
+
             repositorios.append(
                 {
                     "nome_completo": item["full_name"],
@@ -81,6 +113,7 @@ def coletar_repositorios(total: int = TOTAL_REPOS) -> list[dict]:
                     "dias_desde_ultimo_push": (agora - atualizado_em).days,
                 }
             )
+
             if len(repositorios) >= total:
                 break
 
@@ -267,7 +300,7 @@ def main() -> None:
     escrever_csv(repositorios, CAMINHO_CSV_REPOS, "repositórios")
 
     # Etapa 2: Coletar PRs com reviews de cada repositório
-    print(f"\n[2/3] Coletando PRs com reviews de cada repositório...")
+    print(f"\n[2/3] Coletando PRs com reviews de cada repositórios...")
     cabecalhos = obter_cabecalhos()
     todos_prs: list[dict] = []
 
