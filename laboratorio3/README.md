@@ -1,87 +1,159 @@
-# Laboratorio 2 — Qualidade de Sistemas Java (CK)
+# Laboratório 03 — Caracterizando *code review* no GitHub
 
-## Pre-requisitos
+Coleta e análise estatística da atividade de *code review* (Pull
+Requests) nos **200 repositórios mais populares do GitHub**, sob a
+perspectiva de quem submete contribuições.
+
+## Pré-requisitos
 
 - Python 3.12+
-- Java (JRE/JDK 8+)
-- Git
+- *Personal Access Token* (PAT) do GitHub com permissão básica de
+  leitura
 
-## Configuracao
+## Configuração
 
-1. Copie `.env.example` para `.env`:
+1. Copie o token para `.env` (existe um exemplo herdado do `laboratorio2`):
 
-```powershell
-Copy-Item .env.example .env
+   ```powershell
+   Copy-Item ..\laboratorio2\.env .\.env
+   ```
+
+   Ou crie manualmente:
+
+   ```env
+   GITHUB_TOKEN=ghp_seu_token_aqui
+   ```
+
+2. Instale as dependências:
+
+   ```powershell
+   pip install -r requirements.txt
+   ```
+
+## Filtros aplicados (definidos no enunciado)
+
+- 200 repositórios mais populares (por número de estrelas);
+- repositório precisa ter pelo menos **100 PRs fechados**
+  (`MERGED + CLOSED`);
+- PRs com *status* `MERGED` ou `CLOSED`;
+- PRs com pelo menos uma revisão;
+- PRs cujo intervalo entre criação e fechamento (*merge*/*close*)
+  seja **maior que uma hora** (descarta revisões automáticas de
+  *bots*/CI).
+
+## Estrutura do projeto
+
 ```
-
-2. Edite `.env` e preencha:
-
-```env
-GITHUB_TOKEN=ghp_seu_token_aqui
-```
-
-3. Instale dependencias:
-
-```powershell
-pip install -r requirements.txt
-```
-
-## Estrutura
-
-```
-laboratorio2/
+laboratorio3/
   scripts/
-    coleta_sprint1_java.py    # Sprint 01: coleta top-1000 Java
-    coleta_ck_sprint1.py      # Sprint 01: CK em 1 repositorio
-    enriquecer_repos.py       # Sprint 02: adiciona releases e tamanho via API
-    coleta_ck_todos.py        # Sprint 02: CK em todos os repos (paralelo)
-    analise_sprint2.py        # Sprint 02: analise estatistica + relatorio
+    coleta_graphql_PRs.py        # Sprint 01/02: coleta principal via GraphQL
+    enriquecer_participantes.py  # Sprint 02: adiciona num_participantes
+    coleta_sprint1_PRs.py        # Versão REST inicial (referência)
+    analise_sprint3.py           # Sprint 03: análise estatística + gráficos
   output/
-    top_1000_java_repos.csv
-    top_1000_java_repos_enriquecido.csv
-    ck_resultado_1_repo.csv
-    ck_resultado_todos.csv
-    relatorio_final_sprint2.md
-    charts/*.png
-  tools/                       # ck.jar (baixado automaticamente)
-  repos/                       # clones temporarios (gitignored)
-  tmp/                         # saidas temporarias do CK (gitignored)
+    lab3s2/
+      top_200_repos.csv
+      pull_requests_com_reviews.csv
+      pull_requests_com_reviews_sem_participantes.csv  # backup pré-enriquecimento
+      pull_requests_com_reviews_v1_buggy.csv           # auditoria
+      coleta.log
+      enrich.log
+    lab3s3/
+      descritivas_globais.csv
+      descritivas_por_status.csv
+      comparacao_status_mannwhitney.csv  # RQ01–RQ04
+      correlacoes_spearman.csv           # RQ05–RQ08
+      resumo_rqs.md
+      charts/*.png                       # 25 figuras
+  relatorios/
+    relatorio_inicial_lab3s2.md
+    relatorio_final_lab3s3.md
+  README.md
+  requirements.txt
 ```
 
-## Sprint 01
+## Sprint 01 + 02 — Coleta
 
-1. Coletar top-1000 repositorios Java:
+A coleta foi estruturada em duas etapas (GraphQL para velocidade, com
+enriquecimento posterior para o campo mais custoso):
 
 ```powershell
-python scripts/coleta_sprint1_java.py
+# 1. Coleta principal: top-200 repositórios e PRs com filtros (~90 min)
+python scripts/coleta_graphql_PRs.py
+
+# 2. Enriquecimento com num_participantes (~25 min)
+python scripts/enriquecer_participantes.py
 ```
 
-2. Executar CK em 1 repositorio (validacao):
+Saídas:
+
+- `output/lab3s2/top_200_repos.csv`
+- `output/lab3s2/pull_requests_com_reviews.csv` (versão final, com
+  `num_participantes`)
+
+## Sprint 03 — Análise estatística
 
 ```powershell
-python scripts/coleta_ck_sprint1.py
+python scripts/analise_sprint3.py
 ```
 
-## Sprint 02
+Saídas em `output/lab3s3/`:
 
-1. Enriquecer CSV com releases e tamanho (via API, sem clone):
+- `descritivas_globais.csv` — estatísticas descritivas globais;
+- `descritivas_por_status.csv` — estatísticas por *status*;
+- `comparacao_status_mannwhitney.csv` — RQ01–RQ04 (Mann-Whitney *U*,
+  delta de Cliff, ponto-bisserial);
+- `correlacoes_spearman.csv` — RQ05–RQ08 (Spearman ρ, Pearson em log,
+  IC 95% por *bootstrap*);
+- `resumo_rqs.md` — resumo executivo;
+- `charts/*.png` — 25 figuras (8 *boxplots*, 8 *scatter* log-log,
+  8 violinos, 1 *heatmap*).
 
-```powershell
-python scripts/enriquecer_repos.py
-```
+## Métricas coletadas por PR
 
-2. Executar CK em todos os repositorios (4 workers paralelos):
+| Categoria | Métrica | Unidade |
+|---|---|---|
+| Tamanho | `changed_files` | arquivos |
+| Tamanho | `additions`, `deletions`, `loc_total` | linhas |
+| Tempo de análise | `tempo_analise_horas`, `tempo_analise_dias` | horas / dias |
+| Descrição | `descricao_tamanho_chars` | caracteres |
+| Interações | `num_participantes` | pessoas distintas |
+| Interações | `total_comentarios` | comentários |
+| Revisão | `numero_reviews` | revisões |
+| *Status* | `status` | `MERGED` / `CLOSED` |
 
-```powershell
-python scripts/coleta_ck_todos.py
-```
+## Questões de pesquisa
 
-Opcoes:
-- `--workers 8` para usar 8 workers
-- `--ck-jar caminho/ck.jar` para informar JAR customizado
+**Dimensão A — *Feedback* final (*status* do PR):**
 
-3. Gerar analise, graficos e relatorio:
+- RQ01: tamanho × *status*
+- RQ02: tempo de análise × *status*
+- RQ03: descrição × *status*
+- RQ04: interações × *status*
 
-```powershell
-python scripts/analise_sprint2.py
-```
+**Dimensão B — Número de revisões:**
+
+- RQ05: tamanho × `numero_reviews`
+- RQ06: tempo de análise × `numero_reviews`
+- RQ07: descrição × `numero_reviews`
+- RQ08: interações × `numero_reviews`
+
+## Estatística empregada
+
+- Mediana, IQR, percentis 25/75/95 (distribuições assimétricas).
+- **Mann-Whitney *U*** + **delta de Cliff** + ponto-bisserial para
+  RQ01–RQ04.
+- **Spearman ρ** + Pearson em log(*x* + 1) para RQ05–RQ08.
+- Intervalos de confiança de 95% via *bootstrap* (1.000 reamostragens).
+- Correção **Holm step-down** e Bonferroni para múltiplas
+  comparações (α = 0,05).
+
+## *Dataset* final
+
+- 14.347 PRs analisados;
+- 182 repositórios efetivos (de 200 candidatos);
+- 9.728 `MERGED` e 4.619 `CLOSED`;
+- *Snapshot* coletado em 30 de abril de 2026.
+
+Para resultados, hipóteses, vereditos e discussão, consulte o
+[relatório final](relatorios/relatorio_final_lab3s3.md).
