@@ -1,0 +1,9 @@
+variavel,faixa,n,n_merged,taxa_merged
+tempo_analise_horas,Q1 (menores valores),3587,2922,0.8146
+tempo_analise_horas,Q2,3587,2894,0.8068
+tempo_analise_horas,Q3,3586,2528,0.705
+tempo_analise_horas,Q4 (maiores valores),3587,1384,0.3858
+loc_total,Q1 (menores valores),3674,2353,0.6404
+loc_total,Q2,3531,2477,0.7015
+loc_total,Q3,3557,2499,0.7026
+loc_total,Q4 (maiores valores),3585,2399,0.6692
