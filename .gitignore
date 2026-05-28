@@ -14,6 +14,12 @@ laboratorio1/.lab1/
 **/.env
 
 # Generated artifacts (kept in repo for evaluation)
+.playwright-mcp/
+
+# Laboratorio 4 — dados gerados localmente (scripts/coleta + prepara)
+laboratorio4/data/raw/*.csv
+laboratorio4/data/raw/*.zip
+laboratorio4/output/*.csv
 
 # PDF report generator (local only)
 laboratorio1/scripts/gerar_pdf_relatorio.py
