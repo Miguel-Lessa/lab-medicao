@@ -2,6 +2,8 @@
 __pycache__/
 *.py[cod]
 *.egg-info/
+.pytest_cache/
+.hypothesis/
 
 # Virtual environments
 .venv/
@@ -15,6 +17,13 @@ laboratorio1/.lab1/
 
 # Generated artifacts (kept in repo for evaluation)
 .playwright-mcp/
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
 
 # Laboratorio 4 — dados gerados localmente (scripts/coleta + prepara)
 laboratorio4/data/raw/*.csv
