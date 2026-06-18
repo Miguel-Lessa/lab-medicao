@@ -1,0 +1,25 @@
+{
+  "name": "laboratorio5-graphql-vs-rest-experiment",
+  "version": "1.0.0",
+  "description": "LAB05 - experimento controlado comparando GraphQL e REST em estatisticas de futebol.",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "vitest run",
+    "test:node": "vitest run",
+    "test:python": "python -m pytest tests_py",
+    "test:all": "npm run test:node && python -m pytest tests_py"
+  },
+  "dependencies": {
+    "@apollo/server": "^4.11.3",
+    "cors": "^2.8.5",
+    "express": "^4.18.3",
+    "graphql": "^16.8.1"
+  },
+  "devDependencies": {
+    "fast-check": "^3.23.2",
+    "supertest": "^7.0.0",
+    "vitest": "^1.6.1"
+  }
+}
