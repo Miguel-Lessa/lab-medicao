@@ -105,6 +105,12 @@ def generate_report(
 
     sections = [
         "# Relatorio LAB05 - GraphQL vs REST",
+        "## Introducao",
+        "Este experimento controlado compara uma API REST e uma API GraphQL que expoem "
+        "a mesma base ficticia de estatisticas de futebol. A motivacao e avaliar, de "
+        "forma quantitativa, se a flexibilidade do GraphQL traz beneficios mensuraveis "
+        "sobre uma API REST equivalente em duas dimensoes: tempo de resposta e tamanho "
+        "do payload retornado.",
         "## Hipoteses",
         "- RQ1 H0: o tempo medio do GraphQL e igual ao tempo medio do REST.",
         "- RQ1 H1 unicaudal: o tempo medio do GraphQL e menor que o tempo medio do REST.",
@@ -117,6 +123,16 @@ def generate_report(
         "requisicao de dados de um jogador existente. O desenho e pareado: cada ID sorteado "
         "e submetido aos dois tratamentos na mesma iteracao. A coleta oficial planeja 1000 "
         "iteracoes por tratamento, totalizando 2000 registros planejados.",
+        "## Ambiente de Execucao",
+        "Para aumentar a reprodutibilidade, o experimento foi preparado para execucao em ambiente "
+        "controlado com Docker. A configuracao adicionada usa a imagem base `node:20-bookworm`, "
+        "instala Python 3 e as dependencias pinadas de `requirements.txt`, sobe a API na porta 4000, "
+        "aguarda a disponibilidade do endpoint REST e entao executa a validacao, a coleta "
+        "oficial, a analise estatistica e a geracao das figuras. A execucao recomendada e "
+        "`docker compose up --build`, preservando `output/` e `relatorios/` como volumes. "
+        "As metricas atuais foram regeneradas por esse fluxo, com 2000 registros validos e "
+        "0 falhas. Esse procedimento reduz diferencas de versao entre maquinas e torna mais "
+        "claro o ambiente usado para gerar as metricas.",
     ]
 
     if df.empty or set(CSV_COLUMNS) - set(df.columns):
@@ -145,6 +161,15 @@ def generate_report(
 
     sections.extend(
         [
+            "## Discussao Final",
+            "Os resultados nao sustentam a hipotese de que GraphQL foi mais rapido neste "
+            "cenario: a mediana de tempo do GraphQL ficou maior que a do REST e, por isso, "
+            "a hipotese nula de RQ1 nao foi rejeitada. Para RQ2, os resultados indicam uma "
+            "vantagem clara do GraphQL em tamanho de resposta, pois a consulta selecionou "
+            "apenas os campos `nome` e `gols`, enquanto o endpoint REST retornou o objeto "
+            "completo do jogador. Assim, a principal evidencia observada neste experimento "
+            "e que GraphQL reduziu substancialmente o payload, mas nao melhorou o tempo de "
+            "resposta no ambiente medido.",
             "## Ameacas a Validade",
             "- Interna: cache, ordem de execucao, carga do computador e aquecimento do runtime podem afetar tempos.",
             "- Externa: a base e ficticia e em memoria, portanto os resultados nao generalizam diretamente para APIs reais com banco externo.",

@@ -1,0 +1,8 @@
+node_modules
+.hypothesis
+.pytest_cache
+tests_py/__pycache__
+lab05/__pycache__
+output/*.csv
+output/figures/*.png
+*.log
