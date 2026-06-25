@@ -1,0 +1,26 @@
+services:
+  lab05:
+    build: .
+    container_name: lab05-graphql-rest
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./output:/app/output
+      - ./relatorios:/app/relatorios
+    environment:
+      NODE_ENV: production
+
+  dashboard:
+    build: .
+    container_name: lab05-dashboard
+    profiles:
+      - dashboard
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./output:/app/output
+      - ./relatorios:/app/relatorios
+    command: >
+      streamlit run app/interactive_dashboard.py
+      --server.address=0.0.0.0
+      --server.port=8501

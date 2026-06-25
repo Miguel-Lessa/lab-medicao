@@ -1,0 +1,359 @@
+\documentclass[12pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[brazil]{babel}
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{float}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{caption}
+\usepackage{enumitem}
+
+\geometry{margin=2.5cm}
+\graphicspath{{figuras/}}
+\setlength{\parskip}{0.7em}
+\setlength{\parindent}{0pt}
+
+\title{GraphQL vs REST: Um Experimento Controlado}
+\author{Laboratório 05 -- Experimentação de Software}
+\date{25 de junho de 2026}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+Este relatório apresenta um experimento controlado para comparar APIs REST e GraphQL em duas métricas quantitativas: tempo de resposta, medido em milissegundos, e tamanho da resposta, medido em bytes. O experimento foi executado em ambiente Docker para reduzir variações locais de runtime e dependências. Foram coletadas 1000 medições para REST e 1000 medições para GraphQL, totalizando 2000 registros válidos e 0 falhas. Os resultados indicam que GraphQL reduziu substancialmente o tamanho do payload, mas não foi mais rápido que REST no cenário avaliado.
+\end{abstract}
+
+\section{Versão resumida}
+
+\textbf{Introdução.} O estudo compara REST e GraphQL em uma API local com base fictícia de estatísticas de futebol.
+
+\textbf{Problema.} Não está claro se GraphQL, por permitir selecionar campos específicos, entrega respostas mais rápidas e menores que REST em um cenário controlado.
+
+\textbf{Questões de pesquisa.} RQ1: respostas GraphQL são mais rápidas que respostas REST? RQ2: respostas GraphQL têm tamanho menor que respostas REST?
+
+\textbf{Hipóteses.} Para RQ1, a hipótese alternativa afirma que GraphQL tem menor tempo médio que REST. Para RQ2, a hipótese alternativa afirma que GraphQL tem menor tamanho médio de resposta que REST.
+
+\textbf{Metodologia.} Foram feitas requisições pareadas para os mesmos IDs de jogadores, alternando os tratamentos REST e GraphQL. A coleta oficial teve 1000 iterações por tratamento.
+
+\textbf{Resultado principal.} REST apresentou mediana de tempo menor, portanto RQ1 não foi confirmada. GraphQL apresentou payload muito menor, confirmando RQ2.
+
+\textbf{Conclusão.} Neste experimento, GraphQL foi vantajoso para reduzir tráfego de dados, mas não para reduzir tempo de resposta.
+
+\section{Introdução}
+
+APIs Web são elementos centrais na integração entre aplicações. Entre as abordagens mais utilizadas, REST organiza a comunicação por recursos e endpoints, seguindo princípios arquiteturais consolidados por Fielding \cite{fielding2000rest}. GraphQL, por sua vez, define uma linguagem de consulta baseada em schemas, em que o cliente informa explicitamente os campos desejados na resposta \cite{graphqlspec2025}.
+
+Segundo a documentação da GraphQL Foundation, uma consulta GraphQL retorna uma estrutura com o mesmo formato da consulta e permite que o servidor saiba exatamente quais campos o cliente está solicitando \cite{graphqlqueries2026}. Essa característica sugere uma possível redução do tamanho das respostas, especialmente quando o cliente precisa de apenas parte dos dados disponíveis em um recurso.
+
+Este relatório documenta o Laboratório 05, cujo objetivo foi avaliar quantitativamente diferenças entre REST e GraphQL em um experimento controlado.
+
+\section{Contextualização}
+
+O sistema experimental implementa duas interfaces sobre a mesma base de dados fictícia de estatísticas de futebol:
+
+\begin{itemize}
+  \item uma API REST, com endpoint para consultar jogadores;
+  \item uma API GraphQL, com schema e query para consultar campos específicos de um jogador.
+\end{itemize}
+
+A consulta GraphQL usada no experimento recupera apenas os campos \texttt{nome} e \texttt{gols}. Já o endpoint REST retorna o objeto completo do jogador. Essa diferença representa um caso comum de uso: uma tela ou cliente precisa de poucos campos, mas um endpoint REST retorna mais dados do que o necessário.
+
+\section{Problema foco do experimento}
+
+O problema central é verificar se a adoção de GraphQL, em comparação com REST, traz benefícios mensuráveis em desempenho e volume de dados retornados.
+
+Embora GraphQL seja frequentemente apresentado como uma alternativa mais flexível para evitar \textit{overfetching}, essa vantagem não implica automaticamente menor tempo de resposta. A execução GraphQL inclui parsing da consulta, validação, resolução de campos e serialização da resposta. Portanto, o experimento separa duas dimensões: velocidade e tamanho do payload.
+
+\section{Questões-problema ou Questões-Pesquisa}
+
+\begin{description}[leftmargin=2.5cm]
+  \item[RQ1] Respostas às consultas GraphQL são mais rápidas que respostas às consultas REST?
+  \item[RQ2] Respostas às consultas GraphQL têm tamanho menor que respostas às consultas REST?
+\end{description}
+
+\section{Hipótese(s)}
+
+\subsection{Hipóteses para RQ1}
+
+\begin{itemize}
+  \item \textbf{H0\textsubscript{RQ1}:} o tempo médio de resposta do GraphQL é igual ao tempo médio de resposta do REST.
+  \item \textbf{H1\textsubscript{RQ1}:} o tempo médio de resposta do GraphQL é menor que o tempo médio de resposta do REST.
+\end{itemize}
+
+\subsection{Hipóteses para RQ2}
+
+\begin{itemize}
+  \item \textbf{H0\textsubscript{RQ2}:} o tamanho médio da resposta GraphQL é igual ao tamanho médio da resposta REST.
+  \item \textbf{H1\textsubscript{RQ2}:} o tamanho médio da resposta GraphQL é menor que o tamanho médio da resposta REST.
+\end{itemize}
+
+O nível de significância adotado foi $\alpha = 0{,}05$.
+
+\section{Objetivo}
+
+\subsection{Objetivo principal}
+
+Avaliar quantitativamente se a API GraphQL apresenta respostas mais rápidas e menores que a API REST em um cenário controlado.
+
+\subsection{Objetivos específicos}
+
+\begin{itemize}
+  \item implementar APIs REST e GraphQL sobre a mesma base de dados;
+  \item executar requisições pareadas para os dois tratamentos;
+  \item medir tempo de resposta em milissegundos;
+  \item medir tamanho da resposta em bytes;
+  \item analisar estatisticamente as diferenças observadas;
+  \item gerar tabelas e gráficos para visualização dos resultados;
+  \item confrontar os resultados com literatura científica sobre REST e GraphQL.
+\end{itemize}
+
+\section{Metodologia}
+
+\subsection{Desenho experimental}
+
+O experimento foi desenhado como um estudo pareado. Em cada iteração, um ID de jogador foi selecionado e usado nos dois tratamentos:
+
+\begin{enumerate}
+  \item requisição REST para o endpoint do jogador;
+  \item requisição GraphQL para o mesmo jogador, selecionando apenas \texttt{nome} e \texttt{gols}.
+\end{enumerate}
+
+Esse desenho reduz a influência da variação entre objetos experimentais, pois REST e GraphQL consultam o mesmo jogador em cada par de medições.
+
+\subsection{Variáveis}
+
+\begin{table}[H]
+\centering
+\caption{Variáveis do experimento}
+\begin{tabular}{lll}
+\toprule
+Tipo & Variável & Descrição \\
+\midrule
+Independente & Tecnologia de API & REST ou GraphQL \\
+Dependente & \texttt{tempo\_ms} & Tempo de resposta em milissegundos \\
+Dependente & \texttt{tamanho\_bytes} & Tamanho do payload em bytes \\
+Controle & ID do jogador & Mesmo ID usado no par REST/GraphQL \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Tratamentos}
+
+\begin{itemize}
+  \item \textbf{REST:} requisição \texttt{GET} para \texttt{/rest/players/:id}.
+  \item \textbf{GraphQL:} requisição \texttt{POST} para \texttt{/graphql} com a query \texttt{player(id) \{ nome gols \}}.
+\end{itemize}
+
+\subsection{Objeto experimental}
+
+O objeto experimental é uma requisição de consulta a um jogador existente na base fictícia de estatísticas de futebol.
+
+\section{Passo a passo do experimento}
+
+\begin{enumerate}
+  \item Implementação da base de dados em memória.
+  \item Implementação da API REST.
+  \item Implementação da API GraphQL com Apollo Server.
+  \item Implementação do script de validação do ambiente.
+  \item Execução de uma coleta de validação com 10 iterações.
+  \item Execução da coleta oficial com 1000 iterações por tratamento.
+  \item Armazenamento das medições em \texttt{output/results.csv}.
+  \item Análise estatística dos dados.
+  \item Geração de relatório Markdown.
+  \item Geração de gráficos com Matplotlib e Seaborn.
+  \item Empacotamento do relatório em projeto LaTeX para importação no Prism.
+\end{enumerate}
+
+\section{Decisões}
+
+\begin{itemize}
+  \item Usar requisições pareadas para reduzir variação entre objetos.
+  \item Usar Docker para melhorar a reprodutibilidade do ambiente.
+  \item Manter dependências Python pinadas em \texttt{requirements.txt}.
+  \item Medir tamanho da resposta pelo número de bytes retornados.
+  \item Usar teste estatístico unicaudal, pois as hipóteses alternativas indicam direção específica: GraphQL menor que REST.
+  \item Usar o teste de Mann-Whitney por ser uma alternativa não paramétrica adequada quando não se assume normalidade dos dados.
+\end{itemize}
+
+\section{Materiais utilizados}
+
+\begin{table}[H]
+\centering
+\caption{Materiais e ferramentas}
+\begin{tabular}{ll}
+\toprule
+Material & Uso \\
+\midrule
+Node.js 20 & Execução da API REST/GraphQL \\
+Express & Implementação da API REST \\
+Apollo Server & Implementação da API GraphQL \\
+Python 3 & Scripts de coleta e análise \\
+Requests & Execução das requisições HTTP \\
+Pandas & Manipulação dos dados coletados \\
+SciPy & Teste estatístico \\
+Matplotlib e Seaborn & Geração dos gráficos \\
+Docker e Docker Compose & Ambiente controlado de execução \\
+Prism & Escrita e colaboração científica em LaTeX \cite{openai2026prism} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Métodos utilizados}
+
+O método de coleta mede cada requisição com \texttt{time.perf\_counter}, registra o tempo em milissegundos e calcula o tamanho da resposta com base no conteúdo HTTP retornado. As respostas com erro HTTP, erro GraphQL, timeout ou exceção de rede são classificadas como falhas.
+
+Antes da coleta oficial, o script valida se os endpoints REST e GraphQL respondem corretamente. Se a validação falhar, a coleta oficial é interrompida. Na execução controlada registrada neste relatório, foram obtidos 2000 registros válidos e 0 falhas.
+
+\section{Métricas e suas Unidades}
+
+\begin{table}[H]
+\centering
+\caption{Métricas avaliadas}
+\begin{tabular}{lll}
+\toprule
+Métrica & Unidade & Relação com a questão de pesquisa \\
+\midrule
+\texttt{tempo\_ms} & milissegundos (ms) & RQ1: desempenho temporal \\
+\texttt{tamanho\_bytes} & bytes & RQ2: volume de dados retornado \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Visualização dos Resultados}
+
+\subsection{Visualização tabular, lista ou gráfica do que foi colhido no experimento}
+
+A Tabela \ref{tab:descritivas} apresenta as estatísticas descritivas da coleta oficial.
+
+\begin{table}[H]
+\centering
+\caption{Estatísticas descritivas da coleta oficial}
+\label{tab:descritivas}
+\begin{tabular}{lrrrrrr}
+\toprule
+Tecnologia & Métrica & N & Média & Mediana & Desvio padrão & Min--Max \\
+\midrule
+GraphQL & tempo (ms) & 1000 & 1.7641 & 1.5131 & 1.1198 & 0.8339--19.2746 \\
+REST & tempo (ms) & 1000 & 1.2227 & 1.0699 & 0.6051 & 0.6342--9.0806 \\
+GraphQL & tamanho (bytes) & 1000 & 54.272 & 54.0 & 2.0000 & 50--59 \\
+REST & tamanho (bytes) & 1000 & 326.236 & 326.0 & 2.8111 & 320--333 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+A Tabela \ref{tab:decisoes} resume as decisões estatísticas para as duas questões de pesquisa.
+
+\begin{table}[H]
+\centering
+\caption{Resultados estatísticos por questão de pesquisa}
+\label{tab:decisoes}
+\begin{tabular}{lllll}
+\toprule
+Questão & Métrica & Diferença das medianas & Valor-p & Decisão \\
+\midrule
+RQ1 & tempo\_ms & -0.4432 ms & 1.000000 & Não rejeitar H0 \\
+RQ2 & tamanho\_bytes & 272 bytes & 0.000000 & Rejeitar H0 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Os arquivos completos de dados estão incluídos no projeto:
+
+\begin{itemize}
+  \item \texttt{dados/results.csv}: coleta oficial com 2000 registros;
+  \item \texttt{dados/validation\_results.csv}: coleta de validação.
+\end{itemize}
+
+\section{Gráficos}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{tempo_ms.png}
+\caption{Distribuição do tempo de resposta por tecnologia}
+\label{fig:tempo}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{tamanho_bytes.png}
+\caption{Distribuição do tamanho da resposta por tecnologia}
+\label{fig:tamanho}
+\end{figure}
+
+\section{Discussão dos resultados}
+
+\subsection{Confrontar Questões-pesquisa}
+
+\textbf{RQ1.} Os resultados não sustentam a hipótese de que GraphQL foi mais rápido que REST. A mediana do GraphQL foi 1.5131 ms, enquanto a mediana do REST foi 1.0699 ms. A diferença das medianas foi -0.4432 ms quando calculada como REST menos GraphQL, indicando maior tempo para GraphQL. O valor-p foi 1.000000, portanto a hipótese nula não foi rejeitada ao nível de 0.05.
+
+\textbf{RQ2.} Os resultados sustentam a hipótese de que GraphQL teve tamanho de resposta menor que REST. A mediana do GraphQL foi 54 bytes, enquanto a mediana do REST foi 326 bytes. A redução percentual foi 83.44\%, com valor-p igual a 0.000000. Portanto, a hipótese nula de RQ2 foi rejeitada.
+
+\subsection{Insights}
+
+O principal insight é que GraphQL reduziu significativamente o payload porque a consulta pediu apenas dois campos. No entanto, essa redução de bytes não se converteu em menor tempo de resposta no cenário medido. Isso sugere que, para uma API local, pequena e em memória, o custo adicional de processamento GraphQL pode superar a economia de serialização e transferência.
+
+\subsection{Comparações}
+
+REST foi mais rápido no experimento, mas retornou mais dados. GraphQL foi mais econômico em tamanho de resposta, mas teve maior tempo mediano. Assim, a escolha entre REST e GraphQL depende do objetivo principal:
+
+\begin{itemize}
+  \item se o objetivo é minimizar payload, GraphQL foi superior neste cenário;
+  \item se o objetivo é minimizar latência local para uma consulta simples, REST foi superior neste cenário;
+  \item em cenários com múltiplas chamadas REST ou redes mais lentas, a vantagem de GraphQL pode mudar, pois a redução de round trips pode se tornar mais relevante.
+\end{itemize}
+
+\subsection{Estatísticas}
+
+A análise estatística usou hipóteses unicaudais. Para RQ1, a alternativa esperava GraphQL menor que REST em tempo. Como os dados apontaram o contrário, o teste não ofereceu evidência para rejeitar H0. Para RQ2, a diferença foi grande e consistente, resultando em rejeição de H0.
+
+\subsection{Confronto com artigos ou trabalhos científicos}
+
+Os resultados de RQ2 corroboram a motivação técnica de GraphQL descrita pela GraphQL Foundation: o cliente seleciona os campos desejados, e a resposta segue o formato da consulta \cite{graphqlqueries2026}. Essa propriedade explica por que o payload GraphQL foi menor neste experimento.
+
+O estudo empírico de Wittern et al. \cite{wittern2019graphqlschemas} também caracteriza GraphQL como uma abordagem em que clientes definem precisamente os dados que desejam recuperar, o que se alinha à redução de resposta observada aqui. Portanto, os resultados de tamanho de payload são consistentes com a literatura.
+
+Por outro lado, os resultados de RQ1 contestam a expectativa de que GraphQL seja necessariamente mais rápido. O trabalho GraphQLify \cite{amareen2026graphqlify} relata ganhos de tempo em cenários que envolvem workflows com múltiplas chamadas REST sequenciais. O presente experimento avaliou uma consulta única e simples, executada localmente contra base em memória. Assim, a divergência é plausível: GraphQL pode reduzir tempo quando evita múltiplos round trips, mas não necessariamente em uma consulta única onde REST já retorna rapidamente.
+
+\section{Conclusão}
+
+\subsection{Tomada de decisão}
+
+Com base nos dados coletados, a adoção de GraphQL seria recomendada quando o objetivo principal for reduzir o tamanho das respostas e evitar retorno de campos desnecessários. Para reduzir tempo de resposta em consultas simples e locais, os resultados deste experimento não justificam substituir REST por GraphQL.
+
+\subsection{Sugestões futuras}
+
+\begin{itemize}
+  \item repetir o experimento com banco de dados externo;
+  \item testar consultas que exigem múltiplos endpoints REST;
+  \item medir também uso de CPU e memória;
+  \item avaliar impacto de cache;
+  \item executar os tratamentos em ordem aleatorizada;
+  \item testar com maior latência de rede;
+  \item comparar consultas GraphQL com diferentes quantidades de campos.
+\end{itemize}
+
+\subsection{Resultado conclusivo sucinto}
+
+Neste experimento controlado, GraphQL reduziu o tamanho das respostas em aproximadamente 83.44\%, mas não reduziu o tempo de resposta. Portanto, a principal vantagem observada foi economia de payload, não desempenho temporal.
+
+\section{Ameaças à validade}
+
+\begin{itemize}
+  \item \textbf{Validade interna:} ordem das requisições, aquecimento do runtime, cache e carga da máquina podem influenciar tempos.
+  \item \textbf{Validade externa:} a base é fictícia e em memória; os resultados podem não generalizar para APIs reais com banco externo.
+  \item \textbf{Validade de construção:} tempo e tamanho de resposta não capturam todos os custos de adoção de GraphQL.
+  \item \textbf{Validade de conclusão:} embora a amostra tenha 1000 registros por tratamento, novas execuções podem variar nos tempos absolutos.
+\end{itemize}
+
+\bibliographystyle{plain}
+\bibliography{referencias}
+
+\end{document}
